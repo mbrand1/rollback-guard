@@ -1,0 +1,162 @@
+/* Rollback Guard — Admin Styles */
+
+.rg-storage-summary {
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	padding: 15px 20px;
+	margin: 20px 0;
+}
+
+.rg-storage-stats {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 8px;
+	font-size: 13px;
+	color: #50575e;
+}
+
+.rg-storage-bar {
+	background: #e0e0e0;
+	height: 16px;
+	border-radius: 3px;
+	overflow: hidden;
+}
+
+.rg-storage-bar-fill {
+	background: #2271b1;
+	height: 100%;
+	border-radius: 3px;
+	transition: width 0.3s ease;
+}
+
+.rg-storage-bar-fill.rg-bar-warning {
+	background: #d63638;
+}
+
+/* Plugin accordion sections */
+.rg-plugin-section {
+	background: #fff;
+	border: 1px solid #ccd0d4;
+	margin-bottom: -1px;
+}
+
+.rg-plugin-section:first-of-type {
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+}
+
+.rg-plugin-section:last-of-type {
+	border-bottom-left-radius: 3px;
+	border-bottom-right-radius: 3px;
+	margin-bottom: 20px;
+}
+
+.rg-plugin-section summary {
+	padding: 10px 15px;
+	cursor: pointer;
+	background: #f6f7f7;
+	list-style: none;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.rg-plugin-section summary::-webkit-details-marker {
+	display: none;
+}
+
+.rg-plugin-section summary::before {
+	content: "\f140";
+	font-family: dashicons;
+	margin-right: 8px;
+	font-size: 16px;
+	vertical-align: middle;
+	color: #50575e;
+}
+
+.rg-plugin-section[open] summary::before {
+	content: "\f142";
+}
+
+.rg-plugin-section summary:hover {
+	background: #f0f0f1;
+}
+
+.rg-plugin-summary {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.rg-plugin-info {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.rg-plugin-version {
+	color: #50575e;
+}
+
+/* Badges */
+.rg-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 10px;
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+.rg-badge-backed-up {
+	background: #eaf2e6;
+	color: #2e7d32;
+}
+
+.rg-badge-none {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+.rg-badge-excluded {
+	background: #fef0e7;
+	color: #9a4e1c;
+}
+
+/* Content area inside accordion */
+.rg-plugin-content {
+	border-top: 1px solid #e0e0e0;
+}
+
+.rg-plugin-content .widefat {
+	border: none;
+	border-radius: 0;
+}
+
+.rg-no-backups-inline {
+	padding: 15px 20px;
+	margin: 0;
+	color: #646970;
+	font-style: italic;
+}
+
+/* Button states */
+.rg-delete-backup.rg-deleting {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.rg-manual-backup:disabled {
+	opacity: 0.7;
+}
+
+/* Allowlist in settings */
+.rg-allowlist {
+	margin: 0;
+	list-style: disc;
+	padding-left: 20px;
+}
+
+.rg-allowlist li {
+	margin-bottom: 4px;
+}
