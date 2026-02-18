@@ -20,6 +20,7 @@ class RG_Admin_Page {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'wp_ajax_rg_delete_backup', array( $this, 'ajax_delete_backup' ) );
 		add_action( 'wp_ajax_rg_manual_backup', array( $this, 'ajax_manual_backup' ) );
+		add_action( 'wp_ajax_rg_restore_backup', array( $this, 'ajax_restore_backup' ) );
 		add_action( 'admin_init', array( $this, 'handle_actions' ) );
 	}
 
@@ -63,6 +64,7 @@ class RG_Admin_Page {
 			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
 			'deleteNonce'   => wp_create_nonce( 'rg_delete_backup' ),
 			'backupNonce'   => wp_create_nonce( 'rg_manual_backup' ),
+			'restoreNonce'  => wp_create_nonce( 'rg_restore_backup' ),
 			'confirmDelete' => __( 'Are you sure you want to delete this backup? This cannot be undone.', 'rollback-guard' ),
 		) );
 	}
@@ -198,6 +200,59 @@ class RG_Admin_Page {
 			'message' => sprintf(
 				/* translators: %s: error detail */
 				__( 'Backup failed: %s', 'rollback-guard' ),
+				$error_detail
+			),
+		) );
+	}
+
+	/**
+	 * AJAX handler: restore a plugin from a backup.
+	 */
+	public function ajax_restore_backup() {
+		check_ajax_referer( 'rg_restore_backup', '_wpnonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rollback-guard' ) ) );
+		}
+
+		$slug     = sanitize_text_field( $_POST['slug'] ?? '' );
+		$dir_name = sanitize_file_name( $_POST['dir_name'] ?? '' );
+
+		if ( empty( $slug ) || empty( $dir_name ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid request.', 'rollback-guard' ) ) );
+		}
+
+		$result = $this->manager->restore_backup( $slug, $dir_name );
+
+		if ( 'success' === $result['status'] ) {
+			$msg = sprintf(
+				/* translators: 1: plugin name, 2: version */
+				__( '%1$s restored to v%2$s.', 'rollback-guard' ),
+				$result['plugin_name'],
+				$result['version']
+			);
+			if ( ! empty( $result['activation_error'] ) ) {
+				$msg .= ' ' . sprintf(
+					/* translators: %s: error message */
+					__( 'Note: activation failed — %s', 'rollback-guard' ),
+					$result['activation_error']
+				);
+			}
+			if ( ! empty( $result['pre_restore_error'] ) ) {
+				$msg .= ' ' . sprintf(
+					/* translators: %s: reason */
+					__( '(Pre-restore backup skipped: %s)', 'rollback-guard' ),
+					$result['pre_restore_error']
+				);
+			}
+			wp_send_json_success( array( 'message' => $msg ) );
+		}
+
+		$error_detail = isset( $result['error'] ) ? $result['error'] : ( $result['reason'] ?? 'unknown' );
+		wp_send_json_error( array(
+			'message' => sprintf(
+				/* translators: %s: error */
+				__( 'Restore failed: %s', 'rollback-guard' ),
 				$error_detail
 			),
 		) );

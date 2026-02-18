@@ -123,6 +123,11 @@
 	color: #9a4e1c;
 }
 
+.rg-badge-removed {
+	background: #fce8e8;
+	color: #8b1a1a;
+}
+
 /* Content area inside accordion */
 .rg-plugin-content {
 	border-top: 1px solid #e0e0e0;
@@ -147,6 +152,17 @@
 }
 
 .rg-manual-backup:disabled {
+	opacity: 0.7;
+}
+
+/* Section headings (e.g. "Removed Plugins") */
+.rg-section-heading {
+	margin-top: 30px;
+	margin-bottom: 10px;
+	font-size: 14px;
+}
+
+.rg-restore-backup:disabled {
 	opacity: 0.7;
 }
 

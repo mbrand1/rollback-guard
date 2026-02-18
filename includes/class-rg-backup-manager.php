@@ -170,6 +170,15 @@ class RG_Backup_Manager {
 		$slug      = $this->extract_slug( $plugin_file );
 		$is_single = $this->is_single_file_plugin( $plugin_file );
 
+		// Never back up ourselves.
+		if ( 'rollback-guard' === $slug ) {
+			return array(
+				'status' => 'skipped',
+				'reason' => 'self',
+				'slug'   => $slug,
+			);
+		}
+
 		// Check exclusion list.
 		if ( $this->is_excluded( $slug ) ) {
 			return array(
@@ -197,9 +206,9 @@ class RG_Backup_Manager {
 		$source      = $this->get_plugin_source_path( $plugin_file );
 		$plugin_size = $is_single ? filesize( $source ) : recurse_dirsize( $source );
 
-		// Size gate — skip for manual backups (user explicitly requested it).
+		// Size gate — only enforced for automatic pre-update backups.
 		$size_limit = (int) get_option( 'rg_size_limit_mb', 25 );
-		if ( 'manual' !== $trigger && $plugin_size > $size_limit * MB_IN_BYTES && ! $this->is_allowlisted( $slug ) ) {
+		if ( 'auto_pre_update' === $trigger && $plugin_size > $size_limit * MB_IN_BYTES && ! $this->is_allowlisted( $slug ) ) {
 			return array(
 				'status'  => 'skipped',
 				'reason'  => 'oversized',
@@ -521,6 +530,155 @@ class RG_Backup_Manager {
 		}
 
 		return @rmdir( $dir );
+	}
+
+	/**
+	 * Restore a plugin from a backup.
+	 *
+	 * Always wipes the existing plugin directory before copying backup files.
+	 * If the plugin is currently installed, backs it up first (backup-before-restore).
+	 *
+	 * @param string $slug     Plugin slug.
+	 * @param string $dir_name Backup directory name.
+	 * @return array Result with 'status' key.
+	 */
+	public function restore_backup( $slug, $dir_name ) {
+		$root       = $this->get_backup_root();
+		$backup_dir = trailingslashit( $root ) . $slug . '/' . $dir_name;
+		$files_dir  = $backup_dir . '/files';
+
+		// Security: ensure path is within backup root.
+		$real_backup = realpath( $backup_dir );
+		$real_root   = realpath( $root );
+		if ( false === $real_backup || false === $real_root || 0 !== strpos( $real_backup, $real_root ) ) {
+			return array( 'status' => 'error', 'reason' => 'invalid_path' );
+		}
+
+		if ( ! is_dir( $files_dir ) ) {
+			return array( 'status' => 'error', 'reason' => 'backup_not_found' );
+		}
+
+		$manifest = RG_Manifest::read( $backup_dir . '/manifest.json' );
+		if ( ! $manifest ) {
+			return array( 'status' => 'error', 'reason' => 'manifest_not_found' );
+		}
+
+		$is_single = $this->is_backup_single_file( $files_dir );
+
+		// If the plugin is currently installed, back it up and deactivate.
+		$current_plugin_file = $this->find_plugin_file( $slug );
+		$pre_restore_error   = '';
+
+		if ( $current_plugin_file ) {
+			// Backup current version first (best effort — don't block restore on failure).
+			$pre_backup = $this->create_backup( $current_plugin_file, '', 'pre_restore' );
+			if ( 'success' !== $pre_backup['status'] ) {
+				$pre_restore_error = $pre_backup['reason'] ?? 'unknown';
+			}
+
+			if ( is_plugin_active( $current_plugin_file ) ) {
+				deactivate_plugins( $current_plugin_file );
+			}
+		}
+
+		// Wipe current plugin directory / file.
+		if ( $is_single ) {
+			$dest_file = WP_PLUGIN_DIR . '/' . $slug . '.php';
+			if ( file_exists( $dest_file ) ) {
+				@unlink( $dest_file );
+			}
+		} else {
+			$dest_dir = WP_PLUGIN_DIR . '/' . $slug;
+			if ( is_dir( $dest_dir ) ) {
+				$this->delete_directory( $dest_dir );
+			}
+		}
+
+		// Copy backup files into place.
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		global $wp_filesystem;
+		if ( ! $wp_filesystem ) {
+			WP_Filesystem();
+		}
+
+		if ( $is_single ) {
+			$backup_files = glob( trailingslashit( $files_dir ) . '*' );
+			if ( empty( $backup_files ) ) {
+				$this->log_error( "Restore failed for {$slug}: empty backup." );
+				return array( 'status' => 'error', 'reason' => 'empty_backup' );
+			}
+			if ( ! @copy( $backup_files[0], WP_PLUGIN_DIR . '/' . basename( $backup_files[0] ) ) ) {
+				$this->log_error( "Restore copy failed for single-file plugin {$slug}." );
+				return array( 'status' => 'error', 'reason' => 'copy_failed' );
+			}
+		} else {
+			$dest_dir = WP_PLUGIN_DIR . '/' . $slug;
+			wp_mkdir_p( $dest_dir );
+			$result = copy_dir( $files_dir, $dest_dir );
+			if ( is_wp_error( $result ) ) {
+				$this->log_error( "Restore copy failed for {$slug}: " . $result->get_error_message() );
+				return array(
+					'status' => 'error',
+					'reason' => 'copy_failed',
+					'error'  => $result->get_error_message(),
+				);
+			}
+		}
+
+		// Clear plugin cache so WordPress sees the restored files.
+		wp_clean_plugins_cache();
+
+		// Find and activate the restored plugin.
+		$restored_file    = $this->find_plugin_file( $slug );
+		$activation_error = '';
+
+		if ( $restored_file ) {
+			$activate = activate_plugin( $restored_file );
+			if ( is_wp_error( $activate ) ) {
+				$activation_error = $activate->get_error_message();
+			}
+		}
+
+		return array(
+			'status'             => 'success',
+			'slug'               => $slug,
+			'version'            => $manifest['version'],
+			'plugin_name'        => $manifest['plugin_name'],
+			'activation_error'   => $activation_error,
+			'pre_restore_error'  => $pre_restore_error,
+		);
+	}
+
+	/**
+	 * Find the main plugin file for a given slug from the installed plugins list.
+	 *
+	 * @return string Plugin file path (e.g. "akismet/akismet.php") or empty string.
+	 */
+	public function find_plugin_file( $slug ) {
+		$all_plugins = get_plugins();
+		foreach ( $all_plugins as $file => $data ) {
+			$file_slug = ( false !== strpos( $file, '/' ) ) ? dirname( $file ) : basename( $file, '.php' );
+			if ( $file_slug === $slug ) {
+				return $file;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Check whether a backup's files/ directory contains a single file (single-file plugin).
+	 */
+	private function is_backup_single_file( $files_dir ) {
+		$items = @scandir( $files_dir );
+		if ( ! $items ) {
+			return false;
+		}
+		$items = array_diff( $items, array( '.', '..' ) );
+		if ( 1 !== count( $items ) ) {
+			return false;
+		}
+		$item = reset( $items );
+		return is_file( trailingslashit( $files_dir ) . $item );
 	}
 
 	/**

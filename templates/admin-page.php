@@ -15,6 +15,19 @@ foreach ( $backups as $plugin_backups ) {
 	$backup_count += count( $plugin_backups );
 	++$plugin_with_backups;
 }
+
+// Collect installed plugin slugs so we can find orphaned backups.
+$installed_slugs = array();
+foreach ( $all_plugins as $pf => $pd ) {
+	$installed_slugs[] = ( false !== strpos( $pf, '/' ) ) ? dirname( $pf ) : basename( $pf, '.php' );
+}
+
+// Trigger labels used in backup tables.
+$trigger_labels = array(
+	'auto_pre_update' => __( 'Pre-update', 'rollback-guard' ),
+	'manual'          => __( 'Manual', 'rollback-guard' ),
+	'pre_restore'     => __( 'Pre-restore', 'rollback-guard' ),
+);
 ?>
 <div class="wrap">
 	<h1><?php esc_html_e( 'Plugin Rollback Guard', 'rollback-guard' ); ?></h1>
@@ -64,9 +77,13 @@ foreach ( $backups as $plugin_backups ) {
 		</div>
 	</div>
 
-	<!-- All installed plugins -->
+	<!-- Installed plugins -->
 	<?php foreach ( $all_plugins as $plugin_file => $plugin_data ) :
 		$slug            = ( false !== strpos( $plugin_file, '/' ) ) ? dirname( $plugin_file ) : basename( $plugin_file, '.php' );
+		// Skip ourselves.
+		if ( 'rollback-guard' === $slug ) {
+			continue;
+		}
 		$plugin_backups  = isset( $backups[ $slug ] ) ? $backups[ $slug ] : array();
 		$has_backups     = ! empty( $plugin_backups );
 		$is_excluded     = in_array( $slug, $excluded, true );
@@ -92,8 +109,7 @@ foreach ( $backups as $plugin_backups ) {
 				<?php if ( ! $is_excluded ) : ?>
 					<button type="button" class="button button-small rg-manual-backup"
 							data-plugin-file="<?php echo esc_attr( $plugin_file ); ?>"
-							data-plugin-name="<?php echo esc_attr( $plugin_data['Name'] ); ?>"
-							onclick="event.stopPropagation();">
+							data-plugin-name="<?php echo esc_attr( $plugin_data['Name'] ); ?>">
 						<?php esc_html_e( 'Back Up Now', 'rollback-guard' ); ?>
 					</button>
 				<?php endif; ?>
@@ -115,7 +131,7 @@ foreach ( $backups as $plugin_backups ) {
 					</thead>
 					<tbody>
 						<?php foreach ( $plugin_backups as $backup ) : ?>
-						<tr data-slug="<?php echo esc_attr( $slug ); ?>" data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>">
+						<tr>
 							<td><?php echo esc_html( $backup['version'] ); ?></td>
 							<td>
 								<?php
@@ -125,10 +141,6 @@ foreach ( $backups as $plugin_backups ) {
 							</td>
 							<td>
 								<?php
-								$trigger_labels = array(
-									'auto_pre_update' => __( 'Pre-update', 'rollback-guard' ),
-									'manual'          => __( 'Manual', 'rollback-guard' ),
-								);
 								$trigger = isset( $backup['backup_trigger'] ) ? $backup['backup_trigger'] : 'auto_pre_update';
 								echo esc_html( isset( $trigger_labels[ $trigger ] ) ? $trigger_labels[ $trigger ] : $trigger );
 								?>
@@ -136,6 +148,13 @@ foreach ( $backups as $plugin_backups ) {
 							<td><?php echo esc_html( number_format_i18n( $backup['file_count'] ) ); ?></td>
 							<td><?php echo esc_html( size_format( $backup['total_size_bytes'] ) ); ?></td>
 							<td>
+								<button type="button" class="button button-small rg-restore-backup"
+										data-slug="<?php echo esc_attr( $slug ); ?>"
+										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>"
+										data-version="<?php echo esc_attr( $backup['version'] ); ?>"
+										data-name="<?php echo esc_attr( $backup['plugin_name'] ?? $plugin_data['Name'] ); ?>">
+									<?php esc_html_e( 'Restore', 'rollback-guard' ); ?>
+								</button>
 								<button type="button" class="button button-small rg-delete-backup"
 										data-slug="<?php echo esc_attr( $slug ); ?>"
 										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>">
@@ -158,4 +177,88 @@ foreach ( $backups as $plugin_backups ) {
 		</div>
 	</details>
 	<?php endforeach; ?>
+
+	<?php
+	// Orphaned backups — plugins that have been removed but still have backups on disk.
+	$orphaned = array();
+	foreach ( $backups as $b_slug => $b_list ) {
+		if ( 'rollback-guard' !== $b_slug && ! in_array( $b_slug, $installed_slugs, true ) ) {
+			$orphaned[ $b_slug ] = $b_list;
+		}
+	}
+	?>
+
+	<?php if ( ! empty( $orphaned ) ) : ?>
+		<h2 class="rg-section-heading"><?php esc_html_e( 'Removed Plugins', 'rollback-guard' ); ?></h2>
+
+		<?php foreach ( $orphaned as $slug => $plugin_backups ) :
+			$display_name = $plugin_backups[0]['plugin_name'];
+			$backup_label = sprintf(
+				_n( '%d backup', '%d backups', count( $plugin_backups ), 'rollback-guard' ),
+				count( $plugin_backups )
+			);
+		?>
+		<details class="rg-plugin-section" open>
+			<summary>
+				<div class="rg-plugin-summary">
+					<span class="rg-plugin-info">
+						<strong><?php echo esc_html( $display_name ); ?></strong>
+						<span class="rg-badge rg-badge-removed"><?php esc_html_e( 'Not installed', 'rollback-guard' ); ?></span>
+						<span class="rg-badge rg-badge-backed-up"><?php echo esc_html( $backup_label ); ?></span>
+					</span>
+				</div>
+			</summary>
+
+			<div class="rg-plugin-content">
+				<table class="widefat striped">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Version', 'rollback-guard' ); ?></th>
+							<th><?php esc_html_e( 'Date', 'rollback-guard' ); ?></th>
+							<th><?php esc_html_e( 'Trigger', 'rollback-guard' ); ?></th>
+							<th><?php esc_html_e( 'Files', 'rollback-guard' ); ?></th>
+							<th><?php esc_html_e( 'Size', 'rollback-guard' ); ?></th>
+							<th><?php esc_html_e( 'Actions', 'rollback-guard' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $plugin_backups as $backup ) : ?>
+						<tr>
+							<td><?php echo esc_html( $backup['version'] ); ?></td>
+							<td>
+								<?php
+								$date_obj = date_create( $backup['backup_date'] );
+								echo $date_obj ? esc_html( $date_obj->format( 'M j, Y g:i A' ) ) : esc_html( $backup['backup_date'] );
+								?>
+							</td>
+							<td>
+								<?php
+								$trigger = isset( $backup['backup_trigger'] ) ? $backup['backup_trigger'] : 'auto_pre_update';
+								echo esc_html( isset( $trigger_labels[ $trigger ] ) ? $trigger_labels[ $trigger ] : $trigger );
+								?>
+							</td>
+							<td><?php echo esc_html( number_format_i18n( $backup['file_count'] ) ); ?></td>
+							<td><?php echo esc_html( size_format( $backup['total_size_bytes'] ) ); ?></td>
+							<td>
+								<button type="button" class="button button-small rg-restore-backup"
+										data-slug="<?php echo esc_attr( $slug ); ?>"
+										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>"
+										data-version="<?php echo esc_attr( $backup['version'] ); ?>"
+										data-name="<?php echo esc_attr( $backup['plugin_name'] ?? $display_name ); ?>">
+									<?php esc_html_e( 'Restore', 'rollback-guard' ); ?>
+								</button>
+								<button type="button" class="button button-small rg-delete-backup"
+										data-slug="<?php echo esc_attr( $slug ); ?>"
+										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>">
+									<?php esc_html_e( 'Delete', 'rollback-guard' ); ?>
+								</button>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		</details>
+		<?php endforeach; ?>
+	<?php endif; ?>
 </div>
