@@ -1,3 +1,6 @@
+# Claude Code
+.claude/
+
 # Custom files to ignore
 notes*.txt
 *_old*.html
