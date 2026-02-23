@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rollback Guard
  * Description: Automatically backs up plugin directories before updates with one-click restore.
- * Version:     1.0.0
+ * Version:     1.0.1
  * Author:      Brandon
  * License:     GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RG_VERSION', '1.0.0' );
+define( 'RG_VERSION', '1.0.1' );
 define( 'RG_PLUGIN_FILE', __FILE__ );
 define( 'RG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RG_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -34,6 +34,18 @@ require_once RG_PLUGIN_DIR . 'includes/class-rg-manifest.php';
 require_once RG_PLUGIN_DIR . 'includes/class-rg-backup-manager.php';
 require_once RG_PLUGIN_DIR . 'includes/class-rg-upgrader-hooks.php';
 require_once RG_PLUGIN_DIR . 'includes/class-rg-admin-page.php';
+
+// Upgrade check.
+require_once RG_PLUGIN_DIR . 'vendor/plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$updateChecker = PucFactory::buildUpdateChecker(
+    'https://github.com/mbrand1/rollback-guard/',
+    __FILE__,
+    'rollback-guard'
+);
+$updateChecker->setBranch( 'main' );
+
 
 // Activation.
 register_activation_hook( __FILE__, function () {

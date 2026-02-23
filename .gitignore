@@ -76,7 +76,7 @@ docs/_build/
 target/
 
 # PHP
-vendor/
+# vendor/
 
 # virtualenv
 .venv
