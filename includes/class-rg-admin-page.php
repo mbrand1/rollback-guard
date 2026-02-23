@@ -22,18 +22,21 @@ class RG_Admin_Page {
 		add_action( 'wp_ajax_rg_manual_backup', array( $this, 'ajax_manual_backup' ) );
 		add_action( 'wp_ajax_rg_restore_backup', array( $this, 'ajax_restore_backup' ) );
 		add_action( 'admin_init', array( $this, 'handle_actions' ) );
+		add_filter( 'plugin_action_links', array( $this, 'add_rollback_link' ), 10, 2 );
 	}
 
 	/**
 	 * Register the Tools → Plugin Backups page.
 	 */
 	public function add_menu_page() {
-		add_management_page(
+		add_menu_page(
 			__( 'Plugin Backups', 'rollback-guard' ),
 			__( 'Plugin Backups', 'rollback-guard' ),
 			'manage_options',
 			'rollback-guard',
-			array( $this, 'render_page' )
+			array( $this, 'render_page' ),
+			RG_PLUGIN_URL . 'assets/img/icon-16x16.png',
+			81
 		);
 	}
 
@@ -41,7 +44,7 @@ class RG_Admin_Page {
 	 * Enqueue admin CSS/JS only on our page.
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( 'tools_page_rollback-guard' !== $hook ) {
+		if ( 'toplevel_page_rollback-guard' !== $hook ) {
 			return;
 		}
 
@@ -61,11 +64,20 @@ class RG_Admin_Page {
 		);
 
 		wp_localize_script( 'rg-admin', 'rgAdmin', array(
-			'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
-			'deleteNonce'   => wp_create_nonce( 'rg_delete_backup' ),
-			'backupNonce'   => wp_create_nonce( 'rg_manual_backup' ),
-			'restoreNonce'  => wp_create_nonce( 'rg_restore_backup' ),
-			'confirmDelete' => __( 'Are you sure you want to delete this backup? This cannot be undone.', 'rollback-guard' ),
+			'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+			'deleteNonce'    => wp_create_nonce( 'rg_delete_backup' ),
+			'backupNonce'    => wp_create_nonce( 'rg_manual_backup' ),
+			'confirmDelete'  => __( 'Are you sure you want to delete this backup? This cannot be undone.', 'rollback-guard' ),
+			'noBackupsYet'   => __( 'No backups yet. Use "Back Up Now" or backups will be created automatically before updates.', 'rollback-guard' ),
+			'noBackups'      => __( 'No backups', 'rollback-guard' ),
+			'backupSingular' => __( '1 backup', 'rollback-guard' ),
+			/* translators: %d: number of backups */
+			'backupPlural'   => __( '%d backups', 'rollback-guard' ),
+			'deleteFailed'   => __( 'Failed to delete backup.', 'rollback-guard' ),
+			'requestFailed'  => __( 'Request failed. Please try again.', 'rollback-guard' ),
+			'backingUp'      => __( 'Backing up…', 'rollback-guard' ),
+			'backUpNow'      => __( 'Back Up Now', 'rollback-guard' ),
+			'backupFailed'   => __( 'Backup failed.', 'rollback-guard' ),
 		) );
 	}
 
@@ -79,7 +91,7 @@ class RG_Admin_Page {
 				return;
 			}
 			$this->manager->add_to_allowlist( sanitize_text_field( $_GET['slug'] ) );
-			wp_safe_redirect( admin_url( 'tools.php?page=rollback-guard&rg_msg=allowlisted' ) );
+			wp_safe_redirect( admin_url( 'admin.php?page=rollback-guard&rg_msg=allowlisted' ) );
 			exit;
 		}
 
@@ -89,7 +101,7 @@ class RG_Admin_Page {
 				return;
 			}
 			$this->manager->remove_from_allowlist( sanitize_text_field( $_GET['slug'] ) );
-			wp_safe_redirect( admin_url( 'tools.php?page=rollback-guard&tab=settings&rg_msg=removed_allowlist' ) );
+			wp_safe_redirect( admin_url( 'admin.php?page=rollback-guard&tab=settings&rg_msg=removed_allowlist' ) );
 			exit;
 		}
 
@@ -115,7 +127,7 @@ class RG_Admin_Page {
 			: array();
 		update_option( 'rg_excluded_plugins', $excluded );
 
-		wp_safe_redirect( admin_url( 'tools.php?page=rollback-guard&tab=settings&rg_msg=saved' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=rollback-guard&tab=settings&rg_msg=saved' ) );
 		exit;
 	}
 
@@ -259,9 +271,72 @@ class RG_Admin_Page {
 	}
 
 	/**
+	 * Add a "Rollback" link to the plugin action links on the Plugins page.
+	 */
+	public function add_rollback_link( $actions, $plugin_file ) {
+		$slug = $this->manager->extract_slug( $plugin_file );
+
+		// Don't show for ourselves.
+		if ( 'rollback-guard' === $slug ) {
+			return $actions;
+		}
+
+		$backups = $this->manager->get_plugin_backups( $slug );
+		if ( empty( $backups ) ) {
+			return $actions;
+		}
+
+		$url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'page'      => 'rollback-guard',
+					'rg_action' => 'confirm_rollback',
+					'slug'      => $slug,
+				),
+				admin_url( 'admin.php' )
+			),
+			'rg_confirm_rollback'
+		);
+
+		$actions['rollback'] = sprintf(
+			'<a href="%s">%s</a>',
+			esc_url( $url ),
+			esc_html__( 'Rollback', 'rollback-guard' )
+		);
+
+		return $actions;
+	}
+
+	/**
 	 * Render the admin page.
 	 */
 	public function render_page() {
+		// Confirmation page for rollback from Plugins list.
+		if ( isset( $_GET['rg_action'] ) && 'confirm_rollback' === $_GET['rg_action'] && isset( $_GET['slug'] ) ) {
+			if ( ! current_user_can( 'manage_options' ) || ! wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'rg_confirm_rollback' ) ) {
+				wp_die( esc_html__( 'Permission denied.', 'rollback-guard' ) );
+			}
+			$slug     = sanitize_text_field( $_GET['slug'] );
+			$dir_name = isset( $_GET['dir_name'] ) ? sanitize_file_name( $_GET['dir_name'] ) : '';
+			$backups  = $this->manager->get_plugin_backups( $slug );
+			$manager  = $this->manager;
+			if ( empty( $backups ) ) {
+				wp_die( esc_html__( 'No backups found for this plugin.', 'rollback-guard' ) );
+			}
+			// Use the specified backup if provided, otherwise the most recent.
+			$backup = $backups[0];
+			if ( $dir_name ) {
+				foreach ( $backups as $b ) {
+					if ( $b['dir_name'] === $dir_name ) {
+						$backup = $b;
+						break;
+					}
+				}
+			}
+			include RG_PLUGIN_DIR . 'templates/confirm-rollback.php';
+			return;
+		}
+
 		$current_tab = isset( $_GET['tab'] ) && 'settings' === $_GET['tab'] ? 'settings' : 'backups';
 		$backups     = $this->manager->get_all_backups();
 		$total_size  = $this->manager->get_total_backup_size();

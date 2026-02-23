@@ -125,7 +125,7 @@ class RG_Upgrader_Hooks {
 			return;
 		}
 
-		$page_url = admin_url( 'tools.php?page=rollback-guard' );
+		$page_url = admin_url( 'admin.php?page=rollback-guard' );
 
 		echo '<div class="notice notice-info is-dismissible"><p><strong>';
 		esc_html_e( 'Rollback Guard', 'rollback-guard' );
@@ -166,7 +166,7 @@ class RG_Upgrader_Hooks {
 								'rg_action' => 'allowlist',
 								'slug'      => $sk['slug'],
 							),
-							admin_url( 'tools.php' )
+							admin_url( 'admin.php' )
 						),
 						'rg_allowlist'
 					);
@@ -181,17 +181,19 @@ class RG_Upgrader_Hooks {
 						esc_url( $allowlist_url )
 					);
 				} elseif ( 'quota_exceeded' === $sk['reason'] ) {
+					echo '&#9888; ';
 					printf(
 						/* translators: %s: plugin name */
-						esc_html__( '&#9888; %s &mdash; skipped, storage quota exceeded.', 'rollback-guard' ),
+						esc_html__( '%s — skipped, storage quota exceeded.', 'rollback-guard' ),
 						esc_html( $sk['name'] )
 					);
 				} elseif ( 'excluded' === $sk['reason'] ) {
 					// Silently skip excluded plugins.
 				} else {
+					echo '&#9888; ';
 					printf(
 						/* translators: %s: plugin name */
-						esc_html__( '&#9888; %s &mdash; skipped.', 'rollback-guard' ),
+						esc_html__( '%s — skipped.', 'rollback-guard' ),
 						isset( $sk['name'] ) ? esc_html( $sk['name'] ) : esc_html( $sk['slug'] )
 					);
 				}

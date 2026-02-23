@@ -475,7 +475,7 @@ class RG_Backup_Manager {
 		// Security: ensure path is within backup root.
 		$real_backup = realpath( $backup_dir );
 		$real_root   = realpath( $root );
-		if ( false === $real_backup || false === $real_root || 0 !== strpos( $real_backup, $real_root ) ) {
+		if ( false === $real_backup || false === $real_root || 0 !== strpos( $real_backup, $real_root . DIRECTORY_SEPARATOR ) ) {
 			return false;
 		}
 
@@ -505,6 +505,15 @@ class RG_Backup_Manager {
 		$to_remove = array_slice( $backups, $max_versions );
 		foreach ( $to_remove as $backup ) {
 			$this->delete_directory( $backup['backup_dir'] );
+		}
+
+		// Clean up empty slug directory.
+		$slug_dir = trailingslashit( $this->get_backup_root() ) . $slug;
+		if ( is_dir( $slug_dir ) ) {
+			$remaining = glob( trailingslashit( $slug_dir ) . '*', GLOB_ONLYDIR );
+			if ( empty( $remaining ) ) {
+				@rmdir( $slug_dir );
+			}
 		}
 	}
 
@@ -550,7 +559,7 @@ class RG_Backup_Manager {
 		// Security: ensure path is within backup root.
 		$real_backup = realpath( $backup_dir );
 		$real_root   = realpath( $root );
-		if ( false === $real_backup || false === $real_root || 0 !== strpos( $real_backup, $real_root ) ) {
+		if ( false === $real_backup || false === $real_root || 0 !== strpos( $real_backup, $real_root . DIRECTORY_SEPARATOR ) ) {
 			return array( 'status' => 'error', 'reason' => 'invalid_path' );
 		}
 

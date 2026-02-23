@@ -30,18 +30,18 @@ $trigger_labels = array(
 );
 ?>
 <div class="wrap">
-	<h1><?php esc_html_e( 'Plugin Rollback Guard', 'rollback-guard' ); ?></h1>
+	<h1><img src="<?php echo esc_url( RG_PLUGIN_URL . 'assets/img/icon-32x32.png' ); ?>" alt="" style="vertical-align: middle; margin-right: 8px;"><?php esc_html_e( 'Plugin Rollback Guard', 'rollback-guard' ); ?></h1>
 
 	<?php if ( 'allowlisted' === $rg_msg ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Plugin added to large-plugin allowlist.', 'rollback-guard' ); ?></p></div>
 	<?php endif; ?>
 
 	<nav class="nav-tab-wrapper">
-		<a href="<?php echo esc_url( admin_url( 'tools.php?page=rollback-guard&tab=backups' ) ); ?>"
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=rollback-guard&tab=backups' ) ); ?>"
 		   class="nav-tab <?php echo 'backups' === $current_tab ? 'nav-tab-active' : ''; ?>">
 			<?php esc_html_e( 'Backups', 'rollback-guard' ); ?>
 		</a>
-		<a href="<?php echo esc_url( admin_url( 'tools.php?page=rollback-guard&tab=settings' ) ); ?>"
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=rollback-guard&tab=settings' ) ); ?>"
 		   class="nav-tab <?php echo 'settings' === $current_tab ? 'nav-tab-active' : ''; ?>">
 			<?php esc_html_e( 'Settings', 'rollback-guard' ); ?>
 		</a>
@@ -130,9 +130,11 @@ $trigger_labels = array(
 						</tr>
 					</thead>
 					<tbody>
+						<?php $rg_is_latest = true; ?>
 						<?php foreach ( $plugin_backups as $backup ) : ?>
 						<tr>
-							<td><?php echo esc_html( $backup['version'] ); ?></td>
+							<td><?php if ( $rg_is_latest ) : ?><span title="<?php esc_attr_e( 'Most recent backup', 'rollback-guard' ); ?>">&#9679;</span> <?php endif; ?><?php echo esc_html( $backup['version'] ); ?></td>
+						<?php $rg_is_latest = false; ?>
 							<td>
 								<?php
 								$date_obj = date_create( $backup['backup_date'] );
@@ -148,13 +150,23 @@ $trigger_labels = array(
 							<td><?php echo esc_html( number_format_i18n( $backup['file_count'] ) ); ?></td>
 							<td><?php echo esc_html( size_format( $backup['total_size_bytes'] ) ); ?></td>
 							<td>
-								<button type="button" class="button button-small rg-restore-backup"
-										data-slug="<?php echo esc_attr( $slug ); ?>"
-										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>"
-										data-version="<?php echo esc_attr( $backup['version'] ); ?>"
-										data-name="<?php echo esc_attr( $backup['plugin_name'] ?? $plugin_data['Name'] ); ?>">
+								<?php
+								$restore_url = wp_nonce_url(
+									add_query_arg(
+										array(
+											'page'      => 'rollback-guard',
+											'rg_action' => 'confirm_rollback',
+											'slug'      => $slug,
+											'dir_name'  => $backup['dir_name'],
+										),
+										admin_url( 'admin.php' )
+									),
+									'rg_confirm_rollback'
+								);
+								?>
+								<a href="<?php echo esc_url( $restore_url ); ?>" class="button button-small">
 									<?php esc_html_e( 'Restore', 'rollback-guard' ); ?>
-								</button>
+								</a>
 								<button type="button" class="button button-small rg-delete-backup"
 										data-slug="<?php echo esc_attr( $slug ); ?>"
 										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>">
@@ -222,9 +234,11 @@ $trigger_labels = array(
 						</tr>
 					</thead>
 					<tbody>
+						<?php $rg_is_latest = true; ?>
 						<?php foreach ( $plugin_backups as $backup ) : ?>
 						<tr>
-							<td><?php echo esc_html( $backup['version'] ); ?></td>
+							<td><?php if ( $rg_is_latest ) : ?><span title="<?php esc_attr_e( 'Most recent backup', 'rollback-guard' ); ?>">&#9679;</span> <?php endif; ?><?php echo esc_html( $backup['version'] ); ?></td>
+						<?php $rg_is_latest = false; ?>
 							<td>
 								<?php
 								$date_obj = date_create( $backup['backup_date'] );
@@ -240,13 +254,23 @@ $trigger_labels = array(
 							<td><?php echo esc_html( number_format_i18n( $backup['file_count'] ) ); ?></td>
 							<td><?php echo esc_html( size_format( $backup['total_size_bytes'] ) ); ?></td>
 							<td>
-								<button type="button" class="button button-small rg-restore-backup"
-										data-slug="<?php echo esc_attr( $slug ); ?>"
-										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>"
-										data-version="<?php echo esc_attr( $backup['version'] ); ?>"
-										data-name="<?php echo esc_attr( $backup['plugin_name'] ?? $display_name ); ?>">
+								<?php
+								$restore_url = wp_nonce_url(
+									add_query_arg(
+										array(
+											'page'      => 'rollback-guard',
+											'rg_action' => 'confirm_rollback',
+											'slug'      => $slug,
+											'dir_name'  => $backup['dir_name'],
+										),
+										admin_url( 'admin.php' )
+									),
+									'rg_confirm_rollback'
+								);
+								?>
+								<a href="<?php echo esc_url( $restore_url ); ?>" class="button button-small">
 									<?php esc_html_e( 'Restore', 'rollback-guard' ); ?>
-								</button>
+								</a>
 								<button type="button" class="button button-small rg-delete-backup"
 										data-slug="<?php echo esc_attr( $slug ); ?>"
 										data-dir="<?php echo esc_attr( $backup['dir_name'] ); ?>">

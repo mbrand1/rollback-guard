@@ -37,22 +37,22 @@
 					if (remaining === 0) {
 						$section.find('table').remove();
 						$section.find('.rg-plugin-content').html(
-							'<p class="rg-no-backups-inline">No backups yet. Use "Back Up Now" or backups will be created automatically before updates.</p>'
+							'<p class="rg-no-backups-inline">' + rgAdmin.noBackupsYet + '</p>'
 						);
 						var $badge = $section.find('.rg-badge');
-						$badge.removeClass('rg-badge-backed-up').addClass('rg-badge-none').text('No backups');
+						$badge.removeClass('rg-badge-backed-up').addClass('rg-badge-none').text(rgAdmin.noBackups);
 					} else {
 						$section.find('.rg-badge-backed-up').text(
-							remaining === 1 ? '1 backup' : remaining + ' backups'
+							remaining === 1 ? rgAdmin.backupSingular : rgAdmin.backupPlural.replace('%d', remaining)
 						);
 					}
 				});
 			} else {
-				alert(response.data && response.data.message ? response.data.message : 'Failed to delete backup.');
+				alert(response.data && response.data.message ? response.data.message : rgAdmin.deleteFailed);
 				$btn.removeClass('rg-deleting').prop('disabled', false);
 			}
 		}).fail(function () {
-			alert('Request failed. Please try again.');
+			alert(rgAdmin.requestFailed);
 			$btn.removeClass('rg-deleting').prop('disabled', false);
 		});
 	});
@@ -64,7 +64,7 @@
 		var $btn = $(this);
 		var pluginFile = $btn.data('plugin-file');
 
-		$btn.prop('disabled', true).text('Backing up\u2026');
+		$btn.prop('disabled', true).text(rgAdmin.backingUp);
 
 		$.post(rgAdmin.ajaxUrl, {
 			action:      'rg_manual_backup',
@@ -74,52 +74,12 @@
 			if (response.success) {
 				window.location.reload();
 			} else {
-				alert(response.data && response.data.message ? response.data.message : 'Backup failed.');
-				$btn.prop('disabled', false).text('Back Up Now');
+				alert(response.data && response.data.message ? response.data.message : rgAdmin.backupFailed);
+				$btn.prop('disabled', false).text(rgAdmin.backUpNow);
 			}
 		}).fail(function () {
-			alert('Request failed. Please try again.');
-			$btn.prop('disabled', false).text('Back Up Now');
-		});
-	});
-
-	// Restore a backup.
-	$(document).on('click', '.rg-restore-backup', function (e) {
-		e.preventDefault();
-
-		var $btn    = $(this);
-		var name    = $btn.data('name');
-		var version = $btn.data('version');
-
-		var msg = 'Restore ' + name + ' to v' + version + '?\n\n';
-		msg += 'This will:\n';
-		msg += '- Back up the current version first (if installed)\n';
-		msg += '- Remove the existing plugin directory\n';
-		msg += '- Copy the backed-up files into place\n';
-		msg += '- Reactivate the plugin';
-
-		if (!confirm(msg)) {
-			return;
-		}
-
-		$btn.prop('disabled', true).text('Restoring\u2026');
-
-		$.post(rgAdmin.ajaxUrl, {
-			action:   'rg_restore_backup',
-			slug:     $btn.data('slug'),
-			dir_name: $btn.data('dir'),
-			_wpnonce: rgAdmin.restoreNonce
-		}, function (response) {
-			if (response.success) {
-				alert(response.data.message);
-				window.location.reload();
-			} else {
-				alert(response.data && response.data.message ? response.data.message : 'Restore failed.');
-				$btn.prop('disabled', false).text('Restore');
-			}
-		}).fail(function () {
-			alert('Request failed. Please try again.');
-			$btn.prop('disabled', false).text('Restore');
+			alert(rgAdmin.requestFailed);
+			$btn.prop('disabled', false).text(rgAdmin.backUpNow);
 		});
 	});
 })(jQuery);

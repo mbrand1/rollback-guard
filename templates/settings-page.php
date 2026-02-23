@@ -12,7 +12,7 @@ $allowlist       = (array) get_option( 'rg_large_plugin_allowlist', array() );
 $all_plugins     = get_plugins();
 ?>
 <div class="wrap">
-	<h1><?php esc_html_e( 'Plugin Rollback Guard', 'rollback-guard' ); ?></h1>
+	<h1><img src="<?php echo esc_url( RG_PLUGIN_URL . 'assets/img/icon-32x32.png' ); ?>" alt="" style="vertical-align: middle; margin-right: 8px;"><?php esc_html_e( 'Plugin Rollback Guard', 'rollback-guard' ); ?></h1>
 
 	<?php if ( 'saved' === $rg_msg ) : ?>
 		<div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Settings saved.', 'rollback-guard' ); ?></p></div>
@@ -21,11 +21,11 @@ $all_plugins     = get_plugins();
 	<?php endif; ?>
 
 	<nav class="nav-tab-wrapper">
-		<a href="<?php echo esc_url( admin_url( 'tools.php?page=rollback-guard&tab=backups' ) ); ?>"
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=rollback-guard&tab=backups' ) ); ?>"
 		   class="nav-tab <?php echo 'backups' === $current_tab ? 'nav-tab-active' : ''; ?>">
 			<?php esc_html_e( 'Backups', 'rollback-guard' ); ?>
 		</a>
-		<a href="<?php echo esc_url( admin_url( 'tools.php?page=rollback-guard&tab=settings' ) ); ?>"
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=rollback-guard&tab=settings' ) ); ?>"
 		   class="nav-tab <?php echo 'settings' === $current_tab ? 'nav-tab-active' : ''; ?>">
 			<?php esc_html_e( 'Settings', 'rollback-guard' ); ?>
 		</a>
