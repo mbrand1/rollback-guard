@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Plugin Rollback Guard (PRG) is a WordPress plugin that snapshots plugin directories before updates, providing one-click restore. It hooks into the WordPress upgrader pipeline to create per-plugin, version-tagged backups. Single-site only — multisite and mu-plugins are explicitly out of scope.
 
-The full specification lives in `rollback-guard-blueprint.md`.
+The full specification was in `rollback-guard-blueprint.md` (moved to `scratch/` — not tracked in git).
 
 ## Architecture
 
@@ -60,7 +60,7 @@ Use `copy_dir()` (from `wp-admin/includes/file.php`) for recursive copies, `WP_F
 
 **Phase 2**: PARTIALLY DONE. File restore and backup-before-restore are complete. Manual backup button is done. Remaining: DB snapshots (options + transients), DB restore (separate opt-in), ZIP download, compression option.
 
-**Phase 3**: PARTIALLY DONE. Settings UI and plugin exclusion list are complete. Remaining: auto-update hardening, checksum verification, email notifications, WP-Cron pruning.
+**Phase 3**: PARTIALLY DONE. Settings UI, plugin exclusion list, and file-level checksum comparison (on restore confirmation page) are complete. Remaining: auto-update hardening, email notifications, WP-Cron pruning.
 
 ## Testing Notes
 
