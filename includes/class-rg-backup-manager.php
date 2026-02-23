@@ -691,6 +691,121 @@ class RG_Backup_Manager {
 	}
 
 	/**
+	 * Compare a backup against the currently installed plugin files.
+	 *
+	 * @param string $slug     Plugin slug.
+	 * @param string $dir_name Backup directory name.
+	 * @return array|null Comparison result, or null if comparison is not possible.
+	 */
+	public function compare_backup_to_installed( $slug, $dir_name ) {
+		$root       = $this->get_backup_root();
+		$backup_dir = trailingslashit( $root ) . $slug . '/' . $dir_name;
+		$files_dir  = $backup_dir . '/files';
+
+		if ( ! is_dir( $files_dir ) ) {
+			return null;
+		}
+
+		// Determine installed plugin path.
+		$plugin_file = $this->find_plugin_file( $slug );
+		if ( ! $plugin_file ) {
+			// Plugin is not installed — everything in backup would be added.
+			$backup_hashes = $this->hash_directory( $files_dir );
+			return array(
+				'identical'  => false,
+				'added'      => array_keys( $backup_hashes ),
+				'removed'    => array(),
+				'modified'   => array(),
+				'unchanged'  => 0,
+				'not_installed' => true,
+			);
+		}
+
+		$installed_path = $this->get_plugin_source_path( $plugin_file );
+		if ( $this->is_single_file_plugin( $plugin_file ) ) {
+			// Single-file: compare the one file.
+			$backup_files = glob( trailingslashit( $files_dir ) . '*' );
+			if ( empty( $backup_files ) ) {
+				return null;
+			}
+			$backup_hash   = md5_file( $backup_files[0] );
+			$installed_hash = file_exists( $installed_path ) ? md5_file( $installed_path ) : null;
+			if ( null === $installed_hash ) {
+				return array(
+					'identical'  => false,
+					'added'      => array( basename( $backup_files[0] ) ),
+					'removed'    => array(),
+					'modified'   => array(),
+					'unchanged'  => 0,
+					'not_installed' => true,
+				);
+			}
+			$same = ( $backup_hash === $installed_hash );
+			return array(
+				'identical'  => $same,
+				'added'      => array(),
+				'removed'    => array(),
+				'modified'   => $same ? array() : array( basename( $backup_files[0] ) ),
+				'unchanged'  => $same ? 1 : 0,
+				'not_installed' => false,
+			);
+		}
+
+		// Directory plugin: hash both sides and compare.
+		$backup_hashes    = $this->hash_directory( $files_dir );
+		$installed_hashes = $this->hash_directory( $installed_path );
+
+		$added     = array_diff_key( $backup_hashes, $installed_hashes );
+		$removed   = array_diff_key( $installed_hashes, $backup_hashes );
+		$common    = array_intersect_key( $backup_hashes, $installed_hashes );
+		$modified  = array();
+		$unchanged = 0;
+
+		foreach ( $common as $rel_path => $backup_hash ) {
+			if ( $backup_hash !== $installed_hashes[ $rel_path ] ) {
+				$modified[] = $rel_path;
+			} else {
+				++$unchanged;
+			}
+		}
+
+		return array(
+			'identical'      => empty( $added ) && empty( $removed ) && empty( $modified ),
+			'added'          => array_keys( $added ),
+			'removed'        => array_keys( $removed ),
+			'modified'       => $modified,
+			'unchanged'      => $unchanged,
+			'not_installed'  => false,
+		);
+	}
+
+	/**
+	 * Build a map of relative_path => md5 hash for all files in a directory.
+	 *
+	 * @param string $dir Absolute directory path.
+	 * @return array Relative path => md5 hash.
+	 */
+	private function hash_directory( $dir ) {
+		$hashes = array();
+		if ( ! is_dir( $dir ) ) {
+			return $hashes;
+		}
+		$base = trailingslashit( realpath( $dir ) );
+		$items = new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator( $dir, RecursiveDirectoryIterator::SKIP_DOTS ),
+			RecursiveIteratorIterator::LEAVES_ONLY
+		);
+		foreach ( $items as $item ) {
+			if ( $item->isFile() ) {
+				$real     = realpath( $item->getPathname() );
+				$rel_path = substr( $real, strlen( $base ) );
+				$hashes[ $rel_path ] = md5_file( $real );
+			}
+		}
+		return $hashes;
+	}
+
+	/**
 	 * Append a message to the error log.
 	 */
 	public function log_error( $message ) {

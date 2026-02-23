@@ -96,7 +96,7 @@ $all_plugins     = get_plugins();
 										'rg_action' => 'remove_allowlist',
 										'slug'      => $allowed_slug,
 									),
-									admin_url( 'tools.php' )
+									admin_url( 'admin.php' )
 								),
 								'rg_remove_allowlist'
 							);

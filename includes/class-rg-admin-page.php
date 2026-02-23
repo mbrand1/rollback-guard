@@ -141,7 +141,7 @@ class RG_Admin_Page {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rollback-guard' ) ) );
 		}
 
-		$slug     = sanitize_text_field( $_POST['slug'] ?? '' );
+		$slug     = sanitize_file_name( $_POST['slug'] ?? '' );
 		$dir_name = sanitize_file_name( $_POST['dir_name'] ?? '' );
 
 		if ( empty( $slug ) || empty( $dir_name ) ) {
@@ -227,7 +227,7 @@ class RG_Admin_Page {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'rollback-guard' ) ) );
 		}
 
-		$slug     = sanitize_text_field( $_POST['slug'] ?? '' );
+		$slug     = sanitize_file_name( $_POST['slug'] ?? '' );
 		$dir_name = sanitize_file_name( $_POST['dir_name'] ?? '' );
 
 		if ( empty( $slug ) || empty( $dir_name ) ) {
@@ -333,6 +333,7 @@ class RG_Admin_Page {
 					}
 				}
 			}
+			$comparison = $manager->compare_backup_to_installed( $slug, $backup['dir_name'] );
 			include RG_PLUGIN_DIR . 'templates/confirm-rollback.php';
 			return;
 		}

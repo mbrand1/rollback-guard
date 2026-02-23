@@ -2,7 +2,7 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
-// Variables: $slug, $backup, $backups, $manager
+// Variables: $slug, $backup, $backups, $manager, $comparison
 
 // Determine where to send the user back to.
 $referer  = wp_get_referer();
@@ -69,9 +69,100 @@ if ( $current_file ) {
 		</tbody>
 	</table>
 
+	<?php if ( $comparison ) : ?>
+		<?php if ( $comparison['identical'] ) : ?>
+			<div class="notice notice-warning inline" style="margin-top: 15px;">
+				<p><strong><?php esc_html_e( 'No changes detected.', 'rollback-guard' ); ?></strong>
+				<?php esc_html_e( 'This backup is identical to the currently installed version. Restoring will not change any files.', 'rollback-guard' ); ?></p>
+			</div>
+		<?php else : ?>
+			<?php
+			$mod_count = count( $comparison['modified'] );
+			$add_count = count( $comparison['added'] );
+			$rem_count = count( $comparison['removed'] );
+			$unch_count = $comparison['unchanged'];
+			$not_installed = ! empty( $comparison['not_installed'] );
+			?>
+			<div class="notice notice-info inline" style="margin-top: 15px;">
+				<p><strong><?php esc_html_e( 'File comparison', 'rollback-guard' ); ?></strong></p>
+				<ul style="list-style: disc; margin-left: 20px;">
+					<?php if ( $mod_count > 0 ) : ?>
+						<li><?php
+							printf(
+								/* translators: %d: number of files */
+								esc_html( _n( '%d file modified', '%d files modified', $mod_count, 'rollback-guard' ) ),
+								$mod_count
+							);
+						?></li>
+					<?php endif; ?>
+					<?php if ( $add_count > 0 ) : ?>
+						<li><?php
+							if ( $not_installed ) {
+								printf(
+									/* translators: %d: number of files */
+									esc_html( _n( '%d file to install', '%d files to install', $add_count, 'rollback-guard' ) ),
+									$add_count
+								);
+							} else {
+								printf(
+									/* translators: %d: number of files */
+									esc_html( _n( '%d file added', '%d files added', $add_count, 'rollback-guard' ) ),
+									$add_count
+								);
+							}
+						?></li>
+					<?php endif; ?>
+					<?php if ( $rem_count > 0 ) : ?>
+						<li><?php
+							printf(
+								/* translators: %d: number of files */
+								esc_html( _n( '%d file removed', '%d files removed', $rem_count, 'rollback-guard' ) ),
+								$rem_count
+							);
+						?></li>
+					<?php endif; ?>
+					<?php if ( $unch_count > 0 ) : ?>
+						<li><?php
+							printf(
+								/* translators: %d: number of files */
+								esc_html( _n( '%d file unchanged', '%d files unchanged', $unch_count, 'rollback-guard' ) ),
+								$unch_count
+							);
+						?></li>
+					<?php endif; ?>
+				</ul>
+
+				<?php if ( $mod_count > 0 || $add_count > 0 || $rem_count > 0 ) : ?>
+				<details style="margin-bottom: 10px;">
+					<summary style="cursor: pointer;"><?php esc_html_e( 'Show changed files', 'rollback-guard' ); ?></summary>
+					<div style="max-height: 200px; overflow-y: auto; margin-top: 5px; font-size: 12px; font-family: monospace;">
+						<?php if ( $mod_count > 0 ) : ?>
+							<?php foreach ( $comparison['modified'] as $f ) : ?>
+								<div style="color: #b26200;">~ <?php echo esc_html( $f ); ?></div>
+							<?php endforeach; ?>
+						<?php endif; ?>
+						<?php if ( $add_count > 0 ) : ?>
+							<?php foreach ( $comparison['added'] as $f ) : ?>
+								<div style="color: #007017;">+ <?php echo esc_html( $f ); ?></div>
+							<?php endforeach; ?>
+						<?php endif; ?>
+						<?php if ( $rem_count > 0 ) : ?>
+							<?php foreach ( $comparison['removed'] as $f ) : ?>
+								<div style="color: #d63638;">&minus; <?php echo esc_html( $f ); ?></div>
+							<?php endforeach; ?>
+						<?php endif; ?>
+					</div>
+				</details>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+	<?php endif; ?>
+
+	<?php if ( ! $comparison || ! $comparison['identical'] ) : ?>
 	<p class="description" style="margin-top: 10px;">
 		<?php esc_html_e( 'A backup of the current version will be created automatically before restoring.', 'rollback-guard' ); ?>
 	</p>
+	<?php endif; ?>
 
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>" id="rg-confirm-rollback-form" style="margin-top: 20px;">
 		<input type="hidden" name="action" value="rg_restore_backup">
@@ -99,27 +190,35 @@ if ( $current_file ) {
 
 <script>
 jQuery(function($) {
+	var rgBackUrl  = <?php echo wp_json_encode( esc_url( $back_url ) ); ?>;
+	var rgGoBack   = <?php echo wp_json_encode( __( 'Go back', 'rollback-guard' ) ); ?>;
+	var rgFailed   = <?php echo wp_json_encode( __( 'Request failed. Please try again.', 'rollback-guard' ) ); ?>;
+
 	$('#rg-confirm-rollback-form').on('submit', function(e) {
 		e.preventDefault();
 		var $form   = $(this);
 		var $btn    = $form.find('#rg-do-rollback');
 		var btnText = $btn.val();
 
-		$btn.prop('disabled', true).val('<?php echo esc_js( __( 'Restoring…', 'rollback-guard' ) ); ?>');
+		$btn.prop('disabled', true).val(<?php echo wp_json_encode( __( 'Restoring…', 'rollback-guard' ) ); ?>);
 
 		$.post($form.attr('action'), $form.serialize(), function(response) {
 			if (response.success) {
-				$form.replaceWith(
-					'<div class="notice notice-success inline"><p>' + response.data.message + '</p>' +
-					'<p><a href="<?php echo esc_url( $back_url ); ?>"><?php echo esc_js( __( 'Go back', 'rollback-guard' ) ); ?></a></p></div>'
-				);
+				var $notice = $('<div class="notice notice-success inline"></div>');
+				$notice.append($('<p></p>').text(response.data.message));
+				$notice.append($('<p></p>').append($('<a></a>').attr('href', rgBackUrl).text(rgGoBack)));
+				$form.replaceWith($notice);
 			} else {
 				$btn.prop('disabled', false).val(btnText);
-				$form.before('<div class="notice notice-error inline"><p>' + response.data.message + '</p></div>');
+				var $err = $('<div class="notice notice-error inline"></div>');
+				$err.append($('<p></p>').text(response.data && response.data.message ? response.data.message : rgFailed));
+				$form.before($err);
 			}
 		}).fail(function() {
 			$btn.prop('disabled', false).val(btnText);
-			$form.before('<div class="notice notice-error inline"><p><?php echo esc_js( __( 'Request failed. Please try again.', 'rollback-guard' ) ); ?></p></div>');
+			var $err = $('<div class="notice notice-error inline"></div>');
+			$err.append($('<p></p>').text(rgFailed));
+			$form.before($err);
 		});
 	});
 });
