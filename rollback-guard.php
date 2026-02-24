@@ -46,6 +46,14 @@ $updateChecker = PucFactory::buildUpdateChecker(
 );
 $updateChecker->setBranch( 'main' );
 
+// Add plugin icons and compatibility info to the update notice.
+$updateChecker->addResultFilter( function ( $pluginInfo ) {
+	$pluginInfo->icons = array(
+		'1x' => RG_PLUGIN_URL . 'assets/img/icon-128x128.png',
+		'2x' => RG_PLUGIN_URL . 'assets/img/icon-256x256.png',
+	);
+	return $pluginInfo;
+} );
 
 // Activation.
 register_activation_hook( __FILE__, function () {
