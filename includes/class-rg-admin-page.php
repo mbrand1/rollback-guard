@@ -75,9 +75,15 @@ class RG_Admin_Page {
 			'backupPlural'   => __( '%d backups', 'rollback-guard' ),
 			'deleteFailed'   => __( 'Failed to delete backup.', 'rollback-guard' ),
 			'requestFailed'  => __( 'Request failed. Please try again.', 'rollback-guard' ),
-			'backingUp'      => __( 'Backing up…', 'rollback-guard' ),
-			'backUpNow'      => __( 'Back Up Now', 'rollback-guard' ),
-			'backupFailed'   => __( 'Backup failed.', 'rollback-guard' ),
+			'backingUp'          => __( 'Backing up…', 'rollback-guard' ),
+			'backUpNow'          => __( 'Back Up Now', 'rollback-guard' ),
+			'backupFailed'       => __( 'Backup failed.', 'rollback-guard' ),
+			'noPluginsToBackup'  => __( 'No eligible plugins to back up.', 'rollback-guard' ),
+			/* translators: 1: current number, 2: total, 3: plugin name */
+			'backupAllProgress'  => __( 'Backing up %1$d of %2$d: %3$s…', 'rollback-guard' ),
+			/* translators: 1: success count, 2: total count */
+			'backupAllDone'      => __( 'Done! %1$d of %2$d plugins backed up successfully.', 'rollback-guard' ),
+			'backupAllFailed'    => __( 'Failed:', 'rollback-guard' ),
 		) );
 	}
 

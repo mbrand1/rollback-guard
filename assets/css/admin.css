@@ -33,6 +33,20 @@
 	background: #d63638;
 }
 
+/* Back Up All */
+.rg-backup-all-wrapper {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 15px;
+}
+
+.rg-backup-all-progress {
+	font-size: 13px;
+	color: #50575e;
+	font-style: italic;
+}
+
 /* Plugin accordion sections */
 .rg-plugin-section {
 	background: #fff;

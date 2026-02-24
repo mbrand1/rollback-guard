@@ -48,19 +48,23 @@ Bulk updates fire `upgrader_pre_install` sequentially for each plugin, then `upg
 - **Single-file plugins**: detected by absence of `/` in plugin path; back up the single file instead of a directory.
 - **Backup-before-restore**: restoring creates a backup of the current version first (undo the undo).
 - **Lock file**: used during backup to prevent race conditions in bulk/cron updates.
+- **Back Up All**: button on the backup browser iterates all eligible plugins sequentially via AJAX, reusing the `rg_manual_backup` endpoint, with live progress display.
+- **Self-hosted updates**: uses [YahnisElsts/plugin-update-checker](https://github.com/YahnisElsts/plugin-update-checker) in `vendor/` (tracked in git) to pull updates from the GitHub repo.
 - **DB snapshots (Phase 2 only)**: heuristic match on `wp_options` rows and transients where name starts with plugin slug. No custom tables.
 
 ### WordPress APIs to Use
 
-Use `copy_dir()` (from `wp-admin/includes/file.php`) for recursive copies, `WP_Filesystem` for file operations, `wp_mkdir_p()` for directory creation, `get_plugin_data()` for version/name, `recurse_dirsize()` for size checks, `size_format()` for display.
+Use `copy_dir()` (from `wp-admin/includes/file.php`) for recursive copies, `WP_Filesystem` for file operations, `wp_mkdir_p()` for directory creation, `get_plugin_data()` for version/name, `size_format()` for display.
+
+**Avoid `recurse_dirsize()` for total backup size** — it caches results in a transient (`dirsize_cache`) that goes stale after backups are created. Instead, `get_total_backup_size()` sums `total_size_bytes` from each backup manifest.
 
 ## Development Phases
 
 **Phase 1 (MVP)**: COMPLETE. Upgrader hooks, file backup with `copy_dir()`, manifest, retention pruning, size gate, storage quota, admin notice, backup browser page, delete backups, security files, single-file plugin support, disk space checks, multisite detection, lock file.
 
-**Phase 2**: PARTIALLY DONE. File restore and backup-before-restore are complete. Manual backup button is done. Remaining: DB snapshots (options + transients), DB restore (separate opt-in), ZIP download, compression option.
+**Phase 2**: PARTIALLY DONE. File restore, backup-before-restore, manual backup button, and "Back Up All Plugins" are complete. Remaining: DB snapshots (options + transients), DB restore (separate opt-in), ZIP download, compression option.
 
-**Phase 3**: PARTIALLY DONE. Settings UI, plugin exclusion list, and file-level checksum comparison (on restore confirmation page) are complete. Remaining: auto-update hardening, email notifications, WP-Cron pruning.
+**Phase 3**: PARTIALLY DONE. Settings UI, plugin exclusion list, file-level checksum comparison (on restore confirmation page), and self-hosted update checker are complete. Remaining: auto-update hardening, email notifications, WP-Cron pruning.
 
 ## Testing Notes
 

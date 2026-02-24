@@ -82,4 +82,77 @@
 			$btn.prop('disabled', false).text(rgAdmin.backUpNow);
 		});
 	});
+	// Back up all plugins.
+	$(document).on('click', '.rg-backup-all', function (e) {
+		e.preventDefault();
+
+		var $btn = $(this);
+		var $progress = $('.rg-backup-all-progress');
+		var plugins = [];
+
+		// Collect all eligible plugins from existing Back Up Now buttons.
+		$('.rg-manual-backup').each(function () {
+			plugins.push({
+				file: $(this).data('plugin-file'),
+				name: $(this).data('plugin-name')
+			});
+		});
+
+		if (plugins.length === 0) {
+			alert(rgAdmin.noPluginsToBackup);
+			return;
+		}
+
+		$btn.prop('disabled', true);
+		$progress.show();
+
+		var total = plugins.length;
+		var current = 0;
+		var successes = 0;
+		var failures = [];
+
+		function backupNext() {
+			if (current >= total) {
+				// All done — show summary and reload.
+				var msg = rgAdmin.backupAllDone
+					.replace('%1$d', successes)
+					.replace('%2$d', total);
+				if (failures.length > 0) {
+					msg += '\n\n' + rgAdmin.backupAllFailed + '\n' + failures.join('\n');
+				}
+				alert(msg);
+				window.location.reload();
+				return;
+			}
+
+			var plugin = plugins[current];
+			$progress.text(
+				rgAdmin.backupAllProgress
+					.replace('%1$d', current + 1)
+					.replace('%2$d', total)
+					.replace('%3$s', plugin.name)
+			);
+
+			$.post(rgAdmin.ajaxUrl, {
+				action:      'rg_manual_backup',
+				plugin_file: plugin.file,
+				_wpnonce:    rgAdmin.backupNonce
+			}, function (response) {
+				if (response.success) {
+					successes++;
+				} else {
+					var reason = response.data && response.data.message ? response.data.message : rgAdmin.backupFailed;
+					failures.push(plugin.name + ': ' + reason);
+				}
+				current++;
+				backupNext();
+			}).fail(function () {
+				failures.push(plugin.name + ': ' + rgAdmin.requestFailed);
+				current++;
+				backupNext();
+			});
+		}
+
+		backupNext();
+	});
 })(jQuery);

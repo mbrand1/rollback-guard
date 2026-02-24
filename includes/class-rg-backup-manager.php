@@ -128,13 +128,22 @@ class RG_Backup_Manager {
 
 	/**
 	 * Get total size of all backups in bytes.
+	 *
+	 * Sums total_size_bytes from each backup manifest instead of using
+	 * recurse_dirsize(), which caches results in a transient and can
+	 * return stale values after new backups are created.
 	 */
 	public function get_total_backup_size() {
-		$root = $this->get_backup_root();
-		if ( ! is_dir( $root ) ) {
-			return 0;
+		$all = $this->get_all_backups();
+		$total = 0;
+		foreach ( $all as $plugin_backups ) {
+			foreach ( $plugin_backups as $backup ) {
+				if ( isset( $backup['total_size_bytes'] ) ) {
+					$total += (int) $backup['total_size_bytes'];
+				}
+			}
 		}
-		return recurse_dirsize( $root );
+		return $total;
 	}
 
 	/**

@@ -77,6 +77,14 @@ $trigger_labels = array(
 		</div>
 	</div>
 
+	<!-- Back Up All -->
+	<div class="rg-backup-all-wrapper">
+		<button type="button" class="button button-primary rg-backup-all">
+			<?php esc_html_e( 'Back Up All Plugins', 'rollback-guard' ); ?>
+		</button>
+		<span class="rg-backup-all-progress" style="display: none;"></span>
+	</div>
+
 	<!-- Installed plugins -->
 	<?php foreach ( $all_plugins as $plugin_file => $plugin_data ) :
 		$slug            = ( false !== strpos( $plugin_file, '/' ) ) ? dirname( $plugin_file ) : basename( $plugin_file, '.php' );

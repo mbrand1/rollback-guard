@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Rollback Guard
  * Description: Automatically backs up plugin directories before updates with one-click restore.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      Brandon
  * License:     GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'RG_VERSION', '1.0.1' );
+define( 'RG_VERSION', '1.0.2' );
 define( 'RG_PLUGIN_FILE', __FILE__ );
 define( 'RG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'RG_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

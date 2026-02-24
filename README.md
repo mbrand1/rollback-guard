@@ -7,8 +7,8 @@ Automatically backs up WordPress plugin directories before updates with one-clic
 Rollback Guard hooks into the WordPress upgrader pipeline to snapshot every plugin right before its files are replaced during an update. If an update breaks something, you can restore the previous version with one click.
 
 - **Automatic backups** — created transparently before every plugin update
-- **Manual backups** — back up any plugin on demand from the admin page
-- **One-click restore** — confirmation page shows what will change, then restores in seconds
+- **Manual backups** — back up any plugin on demand, or use **Back Up All Plugins** to snapshot everything at once
+- **One-click restore** — confirmation page shows file-level diff of what will change, then restores in seconds
 - **Rollback from Plugins page** — a "Rollback" link appears next to Deactivate for any plugin with a backup
 - **Backup-before-restore** — restoring creates a safety backup of the current version first
 

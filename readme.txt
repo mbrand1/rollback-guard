@@ -3,7 +3,7 @@ Contributors: brandon
 Tags: backup, rollback, restore, updates, plugins
 Requires at least: 5.8
 Tested up to: 6.7
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -84,6 +84,23 @@ Either click the "Rollback" link on the Plugins list page, or go to Plugin Backu
 
 == Changelog ==
 
+= 1.0.2 =
+* Added "Back Up All Plugins" button for one-click backup of every installed plugin.
+* Fixed storage usage bar showing incorrect size (was using cached WordPress dirsize transient).
+* Added self-hosted update checker via GitHub releases.
+* Un-ignored vendor/ directory so plugin-update-checker ships with the plugin.
+
+= 1.0.1 =
+* Added one-click restore with confirmation page and file-level checksum comparison.
+* Added backup-before-restore safety net.
+* Added "Rollback" action link on the Plugins list page.
+* Added manual "Back Up Now" button per plugin.
+* Added orphaned backup visibility for removed plugins.
+* Added custom plugin icons and top-level admin menu.
+* Added plugin exclusion list in Settings.
+* Fixed "Back Up Now" button event propagation issue.
+* Fixed security issues in backup and restore operations.
+
 = 1.0.0 =
 * Initial release.
 * Automatic backup before plugin updates via `upgrader_pre_install`.
@@ -101,6 +118,12 @@ Either click the "Rollback" link on the Plugins list page, or go to Plugin Backu
 * Multisite detection and incompatibility notice.
 
 == Upgrade Notice ==
+
+= 1.0.2 =
+Back Up All Plugins button, storage usage fix, self-hosted update checker.
+
+= 1.0.1 =
+One-click restore, rollback links on Plugins page, manual backup, bug fixes.
 
 = 1.0.0 =
 Initial release.
